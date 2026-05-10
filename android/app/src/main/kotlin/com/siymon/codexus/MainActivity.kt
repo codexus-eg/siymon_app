@@ -1,4 +1,4 @@
-package com.example.siymon_app
+package com.siymon.codexus
 
 import io.flutter.embedding.android.FlutterActivity
 

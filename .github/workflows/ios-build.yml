@@ -1,0 +1,27 @@
+name: iOS Build
+on:
+  push:
+    branches: [main] # هيشتغل أول ما ترفع تعديل على فرع main
+
+jobs:
+  build:
+    runs-on: macos-latest # هنا بنطلب من جيت هاب يشغل جهاز ماك
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign # بناء النسخة بدون توقيع (للتجربة)
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-build
+          path: build/ios/iphoneos

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:collection';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +20,8 @@ class SiymonApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        primaryColor: const Color(0xFFFF5722), // لون المتجر بتاعك
+        primaryColor: const Color(0xFFFF5722),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF5722)),
       ),
       home: const MainWebView(),
     );
@@ -37,13 +40,63 @@ class _MainWebViewState extends State<MainWebView> {
   InAppWebViewController? webViewController;
   bool _isLoading = true;
 
-  // إعدادات المتصفح الأساسية والنظيفة
+  // إعدادات المتصفح السريعة والمغلقة
   InAppWebViewSettings settings = InAppWebViewSettings(
     javaScriptEnabled: true,
     geolocationEnabled: true,
     domStorageEnabled: true,
     databaseEnabled: true,
+    cacheEnabled: true,
+    allowFileAccess: true,
+    allowContentAccess: true,
+    transparentBackground: true,
+    verticalScrollBarEnabled: false,
+    horizontalScrollBarEnabled: false,
+    supportZoom: false,
+    builtInZoomControls: false,
+    displayZoomControls: false,
   );
+
+  Future<bool> _showExitDialog() async {
+    return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: const Text(
+              'تنبيه الخروج',
+              textAlign: TextAlign.right,
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              'هل تريد الخروج من التطبيق',
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => SystemNavigator.pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5722),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('خروج'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,11 +104,11 @@ class _MainWebViewState extends State<MainWebView> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+
         if (webViewController != null && await webViewController!.canGoBack()) {
-          // الرجوع الطبيعي بين صفحات الموقع
           await webViewController!.goBack();
         } else {
-          // يمكن هنا مستقبلاً إضافة رسالة "هل تود الخروج من التطبيق؟"
+          await _showExitDialog();
         }
       },
       child: Scaffold(
@@ -69,6 +122,44 @@ class _MainWebViewState extends State<MainWebView> {
                   url: WebUri('https://siymon7.com/'),
                 ),
                 initialSettings: settings,
+                initialUserScripts: UnmodifiableListView<UserScript>([
+                  UserScript(
+                    source: """
+                      // 1. إخفاء الفوتر ومنع التحديد والنسخ
+                      var style = document.createElement('style');
+                      style.innerHTML = `
+                        footer { display: none !important; }
+                        
+                        /* منع تحديد النصوص والصور في كل الموقع */
+                        * {
+                          -webkit-touch-callout: none !important; /* يمنع ظهور قائمة الضغط المطول في الآيفون */
+                          -webkit-user-select: none !important;   /* سفاري وكروم */
+                          -khtml-user-select: none !important;    /* متصفحات قديمة */
+                          -moz-user-select: none !important;      /* فايرفوكس */
+                          -ms-user-select: none !important;       /* إيدج */
+                          user-select: none !important;           /* أساسي */
+                        }
+
+                        /* السماح بالكتابة فقط في مربعات الإدخال أثناء الطلب */
+                        input, textarea {
+                          -webkit-user-select: auto !important;
+                          -khtml-user-select: auto !important;
+                          -moz-user-select: auto !important;
+                          -ms-user-select: auto !important;
+                          user-select: auto !important;
+                        }
+                      `;
+                      document.head.appendChild(style);
+
+                      // 2. منع الزوم من الـ HTML
+                      var meta = document.createElement('meta');
+                      meta.name = 'viewport';
+                      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                      document.getElementsByTagName('head')[0].appendChild(meta);
+                    """,
+                    injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                  ),
+                ]),
                 onWebViewCreated: (controller) {
                   webViewController = controller;
                 },
@@ -82,7 +173,6 @@ class _MainWebViewState extends State<MainWebView> {
                     _isLoading = false;
                   });
                 },
-                // الإذن السحري: بيطلب الـ GPS فقط لما العميل يضغط على جلب العنوان
                 onGeolocationPermissionsShowPrompt: (controller, origin) async {
                   var status = await Permission.locationWhenInUse.request();
                   return GeolocationPermissionShowPromptResponse(
@@ -91,7 +181,6 @@ class _MainWebViewState extends State<MainWebView> {
                     retain: true,
                   );
                 },
-                // التحكم في الروابط الخارجية (واتساب، مكالمات)
                 shouldOverrideUrlLoading: (controller, navigationAction) async {
                   var uri = navigationAction.request.url!;
                   if (![
