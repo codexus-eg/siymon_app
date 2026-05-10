@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4 # تم التحديث للإصدار الرابع
+      - uses: actions/checkout@v4
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -20,8 +20,15 @@ jobs:
       - name: Build iOS
         run: flutter build ios --release --no-codesign
 
+      # الخطوة الجديدة: تغليف التطبيق كملف IPA داخل الماك نفسه
+      - name: Package IPA
+        run: |
+          mkdir Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -qq -r -9 siymon.ipa Payload
+
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4 # تم التحديث للإصدار الرابع
+        uses: actions/upload-artifact@v4
         with:
-          name: ios-build
-          path: build/ios/iphoneos
+          name: siymon-app-release
+          path: siymon.ipa
