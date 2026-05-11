@@ -16,7 +16,7 @@ plugins {
 }
 
 android {
-    namespace = "com.siymon.codexus"
+    namespace = "com.siymoon.codexus"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.siymon.codexus"
+        applicationId = "com.siymoon.codexus"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
